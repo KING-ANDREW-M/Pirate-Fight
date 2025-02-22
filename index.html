@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Fight</title>
+</head>
+<body>
+    <div id="home-screen">
+        <h1>Welcome to PIRATE FIGHT!</h1>
+        <p>Get ready for an epic battle.</p>
+        <div class="buttons">
+            <button id="start-btn">Start Game</button>
+        </div>
+    </div>
+</body>
+</html>
+<style>
+
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    canvas {
+        display: block;
+        background-color: #87CEEB;
+    }
+    #gameOverScreen {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgb(0, 17, 255);
+        color: rgb(0, 225, 255);
+        text-align: center;
+        font-size: 2em;
+        padding-top: 20%;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="gameOverScreen">
+    <p>Game Over</p>
+    <button onclick="restartGame()">Restart</button>
+</div>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+
+    // Set canvas size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // the level
+    let currentLevel = 1;
+
+    // used to ensure the pirate isn't too close to the ship at the start of the level
+    const minimumStartingDistance = 0.2 * (canvas.width * canvas.height / 2)
+
+
+    // Ship object
+    let ship;
+
+    // Rocks array
+    let rocks;
+
+    // Pirate object
+    let pirate;
+
+    // Cannonballs array
+    let cannonballs;
+    let pirateCannonballs;
+
+
+    function createShip() {
+        return {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            width: 50,
+            height: 50,
+            color: 'blue',
+            lastMove: 'ArrowRight',
+            health: 100,
+            speed: 5,
+            lives: 5 // Number of lives for the ship
+        };
+    }
+    function createPirate() {
+        const newPirate =  {
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            width: 75,
+            height: 75,
+            color: 'darkRed',
+            hitCount: 0,
+            speed: 3
+        }
+        const newPirateDistanceFromShip = Math.abs(newPirate.x - ship.x) * Math.abs(newPirate.y - ship.y) * .5;
+        
+        if (newPirateDistanceFromShip < minimumStartingDistance) {
+            return createPirate();
+        }
+        return newPirate;
+        
+    }
+    function populateRocks() {
+        // Populate rocks array with random rocks
+        for (let i = 0; i < 10; i++) {
+            const rock = {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                width: 30,
+                height: 30,
+                color: '#A9A9A9'
+            };
+            rocks.push(rock);
+        }
+    }
+
+    function initLevel(level = 1) {
+        currentLevel = level;
+        ship = createShip();
+        rocks = [];
+        populateRocks();
+        pirate = createPirate();
+        cannonballs = [];
+        pirateCannonballs = [];
+    }
+
+    function initLevel2 (level = 2) {
+        currentLevel = level;
+        ship = createShip();
+        rocks = [];
+        populateRocks();
+        pirate = createPirate();
+        cannonballs = [];
+        pirateCannonballs = [];
+    }
+    function startGame() {
+        document.querySelector('#home-screen').innerHTML = '';
+        // Start game loop
+        initLevel();
+        update();
+    }
+
+    // Event listener for keyboard input
+    window.addEventListener('keydown', function(event) {
+        switch(event.key) {
+            case 'ArrowUp':
+                ship.y -= 10 * ship.speed;
+                ship.lastMove = 'ArrowUp';
+                break;
+            case 'ArrowDown':
+                ship.y += 10 * ship.speed;
+                ship.lastMove = 'ArrowDown';
+                break;
+            case 'ArrowLeft':
+                ship.x -= 10 * ship.speed;
+                ship.lastMove = 'ArrowLeft';
+                break;
+            case 'ArrowRight':
+                ship.x += 10 * ship.speed;
+                ship.lastMove = 'ArrowRight';
+                break;
+            case ' ':
+                fireCannon();
+                break;
+        }
+    });
+
+    // Function to fire cannonball
+    function fireCannon() {
+        const cannonball = {
+            x: ship.x + ship.width / 2,
+            y: ship.y + ship.height / 2,
+            radius: 5,
+            color: 'black',
+            speed: 5,
+            direction: ship.lastMove
+        };
+        cannonballs.push(cannonball);
+    }
+
+    // Function to fire pirate cannonball
+    function firePirateCannon() {
+        const directions = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        const randomDirection = directions[Math.floor(Math.random() * directions.length)];
+        const cannonball = {
+            x: pirate.x + pirate.width / 2,
+            y: pirate.y + pirate.height / 2,
+            radius: 10,
+            color: 'black',
+            speed: 20,
+            direction: randomDirection
+        };
+        pirateCannonballs.push(cannonball);
+    }
+
+    // Function to display health bar
+    function drawHealthBar() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(10, 10, 200, 20);
+        ctx.fillStyle = 'green';
+        ctx.fillRect(10, 10, 200 * (ship.health / 100), 20);
+    }
+    // Function to display pirate hitcount
+    function drawPirateHitCount() {
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText('hitCount: ' + pirate.hitCount, 210, 50);
+    }
+    // Function to display lives
+    function drawLives() {
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText('Lives: ' + ship.lives, 10, 50);
+    }
+    // Function to display level
+    function drawLevel() {
+        ctx.fillStyle = 'purple';
+        ctx.font = '20px Arial';
+        ctx.fillText('Level: ' + currentLevel, 410, 50);
+    }
+
+    // Function to handle game over
+    function gameOver() {
+        gameOverScreen.style.display = 'block';
+        cancelAnimationFrame(update);
+    }
+
+    // Function to restart the game
+    function restartGame() {
+        document.location.reload();
+    }
+
+    // Update function
+    function update() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ship
+        ctx.fillStyle = ship.color;
+        ctx.fillRect(ship.x, ship.y, ship.width, ship.height);
+
+        // Draw health bar and lives
+        drawHealthBar();
+        drawLives();
+        drawPirateHitCount();
+        drawLevel();
+        // Draw rocks
+        rocks.forEach(function(rock) {
+            ctx.fillStyle = rock.color;
+            ctx.fillRect(rock.x, rock.y, rock.width, rock.height);
+
+            // Check collision with ship
+            if (ship.x < rock.x + rock.width &&
+                ship.x + ship.width > rock.x &&
+                ship.y < rock.y + rock.height &&
+                ship.y + ship.height > rock.y) {
+                ship.lives--;
+                if (ship.lives <= 0) {
+                    gameOver();
+                } else {
+                    resetShipPosition();
+                }
+            }
+        });
+
+        // Move pirate towards the ship with simple pathfinding to avoid rocks
+        if (pirate.x < ship.x && !isRockInPath(pirate.x + pirate.speed, pirate.y)) pirate.x += pirate.speed;
+        if (pirate.x > ship.x && !isRockInPath(pirate.x - pirate.speed, pirate.y)) pirate.x -= pirate.speed;
+        if (pirate.y < ship.y && !isRockInPath(pirate.x, pirate.y + pirate.speed)) pirate.y += pirate.speed;
+        if (pirate.y > ship.y && !isRockInPath(pirate.x, pirate.y - pirate.speed)) pirate.y -= pirate.speed;
+
+        // Check collision with rocks for the pirate ship
+        rocks.forEach(function(rock) {
+            if (pirate.x < rock.x + rock.width &&
+                pirate.x + pirate.width > rock.x &&
+                pirate.y < rock.y + rock.height &&
+                pirate.y + pirate.height > rock.y) {
+                // If collision detected, move pirate away
+                if (pirate.x < rock.x + rock.width / 2) pirate.x -= pirate.speed;
+                else pirate.x += pirate.speed;
+                if (pirate.y < rock.y + rock.height / 2) pirate.y -= pirate.speed;
+                else pirate.y += pirate.speed;
+            }
+        });
+
+        // Draw pirate
+        ctx.fillStyle = pirate.color;
+        ctx.fillRect(pirate.x, pirate.y, pirate.width, pirate.height);
+
+        // Check collision with pirate
+        if (ship.x < pirate.x + pirate.width &&
+            ship.x + ship.width > pirate.x &&
+            ship.y < pirate.y + pirate.height &&
+            ship.y + ship.height > pirate.y) {
+            ship.lives--;
+            if (ship.lives <= 0) {
+                gameOver();
+            } else {
+                resetShipPosition();
+            }
+        }
+
+        // Draw cannonballs and check collision with pirate
+        cannonballs.forEach(function(cannonball, index) {
+            ctx.fillStyle = cannonball.color;
+            ctx.beginPath();
+            ctx.arc(cannonball.x, cannonball.y, cannonball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Move cannonball
+            switch(cannonball.direction) {
+                case 'ArrowUp':
+                    cannonball.y -= cannonball.speed;
+                    break;
+                case 'ArrowDown':
+                    cannonball.y += cannonball.speed;
+                    break;
+                case 'ArrowLeft':
+                    cannonball.x -= cannonball.speed;
+                    break;
+                case 'ArrowRight':
+                    cannonball.x += cannonball.speed;
+                    break;
+            }
+
+            // Check collision with pirate
+            if (cannonball.x < pirate.x + pirate.width &&
+                cannonball.x > pirate.x &&
+                cannonball.y < pirate.y + pirate.height &&
+                cannonball.y > pirate.y) {
+                // If hit, remove cannonball and increase hit count
+                cannonballs.splice(index, 1);
+                pirate.hitCount++;
+                pirate.speed += 0.1; // Increase pirate speed slightly
+                firePirateCannon(); // Pirate fires back
+                if (pirate.hitCount === 10) {
+                    alert('You beat the pirate!');
+                    initLevel2();
+                }
+
+            }
+        });
+
+        // Draw pirate cannonballs and check collision with ship
+        pirateCannonballs.forEach(function(cannonball, index) {
+            ctx.fillStyle = cannonball.color;
+            ctx.beginPath();
+            ctx.arc(cannonball.x, cannonball.y, cannonball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Move pirate cannonball
+            switch(cannonball.direction) {
+                case 'ArrowUp':
+                    cannonball.y -= cannonball.speed;
+                    break;
+                case 'ArrowDown':
+                    cannonball.y += cannonball.speed;
+                    break;
+                case 'ArrowLeft':
+                    cannonball.x -= cannonball.speed;
+                    break;
+                case 'ArrowRight':
+                    cannonball.x += cannonball.speed;
+                    break;
+            }
+
+            // Check collision with ship
+            if (cannonball.x < ship.x + ship.width &&
+                cannonball.x > ship.x &&
+                cannonball.y < ship.y + ship.height &&
+                cannonball.y > ship.y) {
+                pirateCannonballs.splice(index, 1);
+                ship.lives--;
+                if (ship.lives <= 0) {
+                    gameOver();
+                }
+            }
+        });
+
+        // Remove cannonballs that go out of bounds
+        cannonballs.forEach(function(cannonball, index) {
+            if (cannonball.x < 0 || cannonball.x > canvas.width ||
+                cannonball.y < 0 || cannonball.y > canvas.height) {
+                cannonballs.splice(index, 1);
+            }
+        });
+
+        pirateCannonballs.forEach(function(cannonball, index) {
+            if (cannonball.x < 0 || cannonball.x > canvas.width ||
+                cannonball.y < 0 || cannonball.y > canvas.height) {
+                pirateCannonballs.splice(index, 1);
+            }
+        });
+
+        requestAnimationFrame(update);
+    }
+
+    // Function to reset ship position after losing a life
+    function resetShipPosition() {
+        ship.x = canvas.width / 2;
+        ship.y = canvas.height / 2;
+    }
+
+    // Function to add a new rock far away from the ship
+    function addRock() {
+    rocks.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        width: 30,
+        height: 30,
+        color: '#A9A9A9'
+    });
+}
+
+// Event listener for the "A" key
+window.addEventListener('keydown', function(event) {
+    if (event.key === 'a' && ship.lives>3) {
+        addRock();
+    }
+    
+});
+    // Function to check if there's a rock in the path
+    function isRockInPath(x, y) {
+        return rocks.some(rock => x < rock.x + rock.width &&
+            x + pirate.width > rock.x &&
+            y < rock.y + rock.height &&
+            y + pirate.height > rock.y);
+    }
+
+    document.querySelector('#start-btn').addEventListener('click', startGame);
+
+</script>
+</body>
+</html>
