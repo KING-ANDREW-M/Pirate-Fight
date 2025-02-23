@@ -107,16 +107,34 @@
         return newPirate;
         
     }
+
+    function createRock() {
+        const rock = {
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            width: 30,
+            height: 30,
+            color: '#A9A9A9'
+        };
+        const isLeftSideOfRockOverlapping = rock.x > ship.x && rock.x < (ship.x + ship.width);
+        const isRightSideOfRockOverlapping = (rock.x + rock.width) > ship.x && (rock.x + rock.width) < (ship.x + ship.width);
+        const isTopSideOfRockOverlapping = rock.y > ship.y && rock.y < (ship.y + ship.height);
+        const isBottomSideOfRockOverlapping = (rock.y + rock.height) > ship.y && (rock.y + rock.height) < (ship.y + ship.height);
+
+        if (
+            (isLeftSideOfRockOverlapping && (isTopSideOfRockOverlapping || isBottomSideOfRockOverlapping))
+            ||
+            (isRightSideOfRockOverlapping && (isTopSideOfRockOverlapping || isBottomSideOfRockOverlapping))
+        ) {
+            return createRock();
+        }
+
+        return rock;
+    }
     function populateRocks() {
         // Populate rocks array with random rocks
         for (let i = 0; i < 10; i++) {
-            const rock = {
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                width: 30,
-                height: 30,
-                color: '#A9A9A9'
-            };
+            const rock = createRock();
             rocks.push(rock);
         }
     }
@@ -400,13 +418,7 @@
 
     // Function to add a new rock far away from the ship
     function addRock() {
-    rocks.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        width: 30,
-        height: 30,
-        color: '#A9A9A9'
-    });
+    rocks.push(createRock());
 }
 
 // Event listener for the "A" key
