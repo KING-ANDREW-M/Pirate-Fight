@@ -71,6 +71,9 @@
     // Pirate object
     let pirate;
 
+    // Let there be treasure
+    let treasure = 0;
+
     // Cannonballs array
     let cannonballs;
     let pirateCannonballs;
@@ -233,6 +236,12 @@
         ctx.font = '20px Arial';
         ctx.fillText('Level: ' + currentLevel, 410, 50);
     }
+    // Function to display treasure
+    function drawTreasure() {
+        ctx.fillStyle = 'gold';
+        ctx.font = '20px Arial';
+        ctx.fillText('treasure: ' + treasure, 610, 50);
+    }
 
     // Function to handle game over
     function gameOver() {
@@ -259,6 +268,7 @@
         drawLives();
         drawPirateHitCount();
         drawLevel();
+        drawTreasure();
         // Draw rocks
         rocks.forEach(function(rock) {
             ctx.fillStyle = rock.color;
@@ -345,6 +355,7 @@
                 cannonball.y > pirate.y) {
                 // If hit, remove cannonball and increase hit count
                 cannonballs.splice(index, 1);
+                treasure = treasure + currentLevel;
                 pirate.hitCount++;
                 pirate.speed += 0.1; // Increase pirate speed slightly
                 firePirateCannon(); // Pirate fires back
@@ -355,6 +366,8 @@
 
             }
         });
+                console.log(treasure);
+    
 
         // Draw pirate cannonballs and check collision with ship
         pirateCannonballs.forEach(function(cannonball, index) {
