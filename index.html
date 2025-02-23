@@ -13,6 +13,12 @@
             <button id="start-btn">Start Game</button>
         </div>
     </div>
+    <div id="levelCompleteScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); color: white; text-align: center; font-size: 2em; padding-top: 20%;">
+        <p>Level Complete!</p>
+        <button onclick="nextLevel()">Continue</button>
+        <button onclick="upgradeCannon()">Upgrade Cannon (50 Treasure)</button>
+    </div>
+    
 </body>
 </html>
 <style>
@@ -77,7 +83,17 @@
     // Cannonballs array
     let cannonballs;
     let pirateCannonballs;
+    let cannonPower = 1; // Default power level
 
+    function upgradeCannon() {
+        if (treasure >= 200) {
+            treasure -= 200;
+            cannonPower++;
+            alert('Cannon upgraded! Now at level ' + cannonPower);
+        } else {
+            alert('Not enough treasure!');
+        }
+    }
 
     function createShip() {
         return {
@@ -111,6 +127,14 @@
         
     }
 
+    function showLevelCompleteScreen() {
+        document.getElementById('levelCompleteScreen').style.display = 'block';
+    }
+
+    function nextLevel() {
+        document.getElementById('levelCompleteScreen').style.display = 'none';
+        initLevel(currentLevel + 1);
+    }
     function createRock() {
         const rock = {
             x: Math.random() * canvas.width,
@@ -356,12 +380,12 @@
                 // If hit, remove cannonball and increase hit count
                 cannonballs.splice(index, 1);
                 treasure = treasure + currentLevel;
-                pirate.hitCount++;
+                pirate.hitCount = pirate.hitCount + cannonPower;
                 pirate.speed += 0.1; // Increase pirate speed slightly
                 firePirateCannon(); // Pirate fires back
                 if (pirate.hitCount === 10) {
                     alert('You beat the pirate!');
-                    initLevel(currentLevel + 1);
+                    showLevelCompleteScreen()
                 }
 
             }
