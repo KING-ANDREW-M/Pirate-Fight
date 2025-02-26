@@ -16,7 +16,8 @@
     <div id="levelCompleteScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); color: white; text-align: center; font-size: 2em; padding-top: 20%;">
         <p>Level Complete!</p>
         <button onclick="nextLevel()">Continue</button>
-        <button onclick="upgradeCannon()">Upgrade Cannon (50 Treasure)</button>
+        <button onclick="upgradeCannon()">Upgrade Cannon (200 Treasure)</button>
+        <button onclick="superCannon()">OP Cannon (50 Treasure)</button>
     </div>
     
 </body>
@@ -58,6 +59,8 @@
     const ctx = canvas.getContext('2d');
     const gameOverScreen = document.getElementById('gameOverScreen');
 
+    const directions = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    
     // Set canvas size
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -83,12 +86,23 @@
     // Cannonballs array
     let cannonballs;
     let pirateCannonballs;
+    let superCannonUpgraded = false;
     let cannonPower = 1; // Default power level
 
     function upgradeCannon() {
         if (treasure >= 200) {
             treasure -= 200;
             cannonPower++;
+            alert('Cannon upgraded! Now at level ' + cannonPower);
+        } else {
+            alert('Not enough treasure!');
+        }
+    }
+
+    function superCannon() {
+        if (treasure >= 50) {
+            superCannonUpgraded = true;
+            treasure -= 50;
             alert('Cannon upgraded! Now at level ' + cannonPower);
         } else {
             alert('Not enough treasure!');
@@ -104,8 +118,8 @@
             color: 'blue',
             lastMove: 'ArrowRight',
             health: 100,
-            speed: 5,
-            lives: 5 // Number of lives for the ship
+            speed: 7,
+            lives: 4 + currentLevel // Number of lives for the ship
         };
     }
     function createPirate(level = 1) {
@@ -207,29 +221,38 @@
         }
     });
 
-    // Function to fire cannonball
-    function fireCannon() {
-        const cannonball = {
+    function createCannonBall(direction) {
+        return {
             x: ship.x + ship.width / 2,
             y: ship.y + ship.height / 2,
             radius: 5,
             color: 'black',
             speed: 5,
-            direction: ship.lastMove
+            direction
         };
-        cannonballs.push(cannonball);
+    }
+
+    // Function to fire cannonball
+    function fireCannon() {
+        if (superCannonUpgraded) {
+            directions.forEach((direction) => {
+                cannonballs.push(createCannonBall(direction));
+            });
+        } else {
+            const cannonball = createCannonBall(ship.lastMove);
+            cannonballs.push(cannonball);
+        }
     }
 
     // Function to fire pirate cannonball
     function firePirateCannon() {
-        const directions = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         const randomDirection = directions[Math.floor(Math.random() * directions.length)];
         const cannonball = {
             x: pirate.x + pirate.width / 2,
             y: pirate.y + pirate.height / 2,
             radius: 10,
             color: 'black',
-            speed: 20,
+            speed: 5,
             direction: randomDirection
         };
         pirateCannonballs.push(cannonball);
@@ -383,7 +406,7 @@
                 pirate.hitCount = pirate.hitCount + cannonPower;
                 pirate.speed += 0.1; // Increase pirate speed slightly
                 firePirateCannon(); // Pirate fires back
-                if (pirate.hitCount === 10) {
+                if (pirate.hitCount === 12) {
                     alert('You beat the pirate!');
                     showLevelCompleteScreen()
                 }
