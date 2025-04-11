@@ -17,7 +17,7 @@
         <p>Level Complete!</p>
         <button onclick="nextLevel()">Continue</button>
         <button onclick="upgradeCannon()">Upgrade Cannon (200 Treasure)</button>
-        <button onclick="superCannon()">OP Cannon (50 Treasure)</button>
+        <button onclick="superCannon()">OP Cannon (250 Treasure)</button>
     </div>
     
 </body>
@@ -100,9 +100,9 @@
     }
 
     function superCannon() {
-        if (treasure >= 50) {
+        if (treasure >= 250) {
             superCannonUpgraded = true;
-            treasure -= 50;
+            treasure -= 250;
             alert('Cannon upgraded! Now at level ' + cannonPower);
         } else {
             alert('Not enough treasure!');
