@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stick Fighter - Gun Fixed</title>
+<style>
+  canvas {
+    display: block;
+    margin: 20px auto;
+    background-color: #f0f0f0;
+    border: 2px solid #333;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="700" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const player = {
+  x: 150,
+  y: 300,
+  groundY: 300,
+  vy: 0,
+  speed: 4,
+  health: 100,
+  isKicking: false,
+  isBlocking: false,
+  isJumping: false,
+  holdingItem: true,
+  superKick: false,
+  attackQueued: null,
+  color: 'green',
+  lastKickPress: 0,
+  oneShotGun: false
+};
+
+const enemy = {
+  x: 550,
+  y: 300,
+  groundY: 300,
+  vy: 0,
+  speed: 3,
+  health: 100,
+  isKicking: false,
+  isBlocking: false,
+  isJumping: false,
+  holdingItem: true,
+  color: 'red',
+  lastKick: 0
+};
+
+const keys = { left: false, right: false };
+const projectiles = [];
+const powerUps = [];
+let gameOver = false;
+
+// --- DRAW FUNCTIONS ---
+function drawFighter(f) {
+  ctx.strokeStyle = f.color;
+  ctx.lineWidth = 4;
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(f.x, f.y - 60, 20, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // --- FACE ---
+  if(f === player) {
+    // Smiley face
+    ctx.beginPath();
+    ctx.arc(f.x - 7, f.y - 65, 3, 0, Math.PI * 2);
+    ctx.arc(f.x + 7, f.y - 65, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'black';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(f.x, f.y - 55, 7, 0, Math.PI);
+    ctx.stroke();
+  } else if(f === enemy) {
+    // Mad face
+    ctx.beginPath();
+    ctx.moveTo(f.x - 10, f.y - 70);
+    ctx.lineTo(f.x - 4, f.y - 64);
+    ctx.moveTo(f.x + 10, f.y - 70);
+    ctx.lineTo(f.x + 4, f.y - 64);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(f.x, f.y - 50, 7, Math.PI, 2 * Math.PI);
+    ctx.stroke();
+  }
+
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y - 40);
+  ctx.lineTo(f.x, f.y);
+  ctx.stroke();
+
+  // Arms
+  ctx.beginPath();
+  if (f.isBlocking) {
+    ctx.moveTo(f.x - 10, f.y - 40);
+    ctx.lineTo(f.x - 30, f.y - 70);
+    ctx.moveTo(f.x + 10, f.y - 40);
+    ctx.lineTo(f.x + 30, f.y - 70);
+  } else {
+    ctx.moveTo(f.x - 30, f.y - 30);
+    ctx.lineTo(f.x + 30, f.y - 30);
+  }
+  ctx.stroke();
+
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y);
+  ctx.lineTo(f.x - 20, f.y + 40);
+  ctx.moveTo(f.x, f.y);
+  if (f.isKicking) ctx.lineTo(f.x + 40, f.y + 10);
+  else ctx.lineTo(f.x + 20, f.y + 40);
+  ctx.stroke();
+
+  // Item
+  if (f.holdingItem) {
+    ctx.fillStyle = 'orange';
+    ctx.beginPath();
+    ctx.arc(f.x + (f === player ? 25 : -25), f.y - 30, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawHealthBars() {
+  ctx.fillStyle = 'black';
+  ctx.fillRect(20, 20, 200, 20);
+  ctx.fillRect(canvas.width - 220, 20, 200, 20);
+
+  ctx.fillStyle = 'green';
+  ctx.fillRect(20, 20, 2 * player.health, 20);
+  ctx.fillRect(canvas.width - 220, 20, 2 * enemy.health, 20);
+}
+
+function drawProjectiles() {
+  ctx.fillStyle = 'red';
+  projectiles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// --- POWER-UPS ---
+function spawnPowerUp() {
+  const types = ['health','speed','oneShotGun'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const x = Math.random() * (canvas.width - 60) + 30;
+  const y = 300 - 30;
+  powerUps.push({ x, y, type, collected: false });
+}
+
+function drawPowerUps() {
+  powerUps.forEach(p => {
+    if (p.collected) return;
+    ctx.beginPath();
+    switch(p.type) {
+      case 'health': ctx.fillStyle = 'green'; break;
+      case 'speed': ctx.fillStyle = 'blue'; break;
+      case 'oneShotGun': ctx.fillStyle = 'orange'; break;
+    }
+    ctx.arc(p.x, p.y, 10, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function checkPowerUpCollision() {
+  powerUps.forEach(p => {
+    if (p.collected) return;
+    const dx = player.x - p.x;
+    const dy = (player.y - 30) - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 35) {
+      p.collected = true;
+      switch(p.type) {
+        case 'health': player.health = Math.min(player.health + 20, 100); break;
+        case 'speed': player.speed += 2; setTimeout(()=>player.speed-=2,5000); break;
+        case 'oneShotGun': player.oneShotGun = true; break;
+      }
+    }
+  });
+}
+
+// --- ATTACK EXECUTION ---
+function executePlayerAttack() {
+  if (!player.attackQueued) return;
+  switch(player.attackQueued) {
+    case 'kick':
+      if (!player.isKicking) {
+        player.isKicking = true;
+        setTimeout(() => player.isKicking = false, 300);
+      }
+      break;
+    case 'superKick':
+      if (!player.isKicking) {
+        player.isKicking = true;
+        player.superKick = true;
+        setTimeout(() => { player.isKicking = false; player.superKick = false; }, 500);
+      }
+      break;
+    case 'throw':
+      if (player.holdingItem) {
+        projectiles.push({ x: player.x + 30, y: player.y - 30, vx: 8, damage: 3, fromPlayer: true });
+        player.holdingItem = false;
+        setTimeout(() => player.holdingItem = true, 3000);
+      }
+      break;
+  }
+  if (player.oneShotGun) player.oneShotGun = false;
+  player.attackQueued = null;
+}
+
+// --- COLLISIONS ---
+function checkCollisions() {
+  if (player.isKicking && Math.abs(player.x - enemy.x) < 40) {
+    if (!enemy.isBlocking) enemy.health -= player.superKick ? 10 : 5;
+    else enemy.health -= player.superKick ? 5 : 2;
+  }
+  if (enemy.isKicking && Math.abs(enemy.x - player.x) < 40) {
+    if (!player.isBlocking) player.health -= 5;
+    else player.health -= 2;
+  }
+
+  projectiles.forEach(p => {
+    if(p.vx > 0 && Math.abs(p.x - enemy.x) < 20 && Math.abs(p.y - enemy.y + 30) < 40) {
+      enemy.health -= p.damage || 3;
+      p.hit = true;
+    }
+    if(p.vx < 0 && Math.abs(p.x - player.x) < 20 && Math.abs(p.y - player.y + 30) < 40) {
+      player.health -= p.damage || 3;
+      p.hit = true;
+    }
+  });
+
+  for (let i = projectiles.length -1; i>=0;i--){
+    if(projectiles[i].hit || projectiles[i].x<0 || projectiles[i].x>canvas.width) projectiles.splice(i,1);
+  }
+}
+
+// --- ENEMY AI ---
+function enemyAI() {
+  if (enemy.health <=0 || player.health<=0) return;
+  const now = Date.now();
+  const distance = player.x - enemy.x;
+
+  if (Math.abs(distance)>60) enemy.x += distance>0 ? enemy.speed : -enemy.speed;
+
+  if (Math.abs(distance)<=60 && !enemy.isKicking && now - enemy.lastKick>1000) {
+    enemy.isKicking = true;
+    enemy.lastKick = now;
+    setTimeout(()=>enemy.isKicking=false,300);
+  }
+
+  if (!enemy.isBlocking && Math.random()<0.01){
+    enemy.isBlocking = true;
+    setTimeout(()=>enemy.isBlocking=false,500);
+  }
+
+  if (enemy.holdingItem && Math.random()<0.01){
+    projectiles.push({x:enemy.x-30,y:enemy.y-30,vx:-8,damage:3,fromPlayer:false});
+    enemy.holdingItem=false;
+    setTimeout(()=>enemy.holdingItem=true,3000);
+  }
+}
+
+// --- GAME LOOP ---
+function drawGameOver(){
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='white';
+  ctx.font='36px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(player.health<=0?'Enemy Wins!':'Player Wins!',canvas.width/2,canvas.height/2);
+  ctx.font='24px Arial';
+  ctx.fillText('Refresh to play again',canvas.width/2,canvas.height/2+40);
+}
+
+function update(){
+  if(gameOver) return;
+
+  if(keys.left) player.x -= player.speed;
+  if(keys.right) player.x += player.speed;
+  player.x = Math.max(20, Math.min(canvas.width-20, player.x));
+
+  [player, enemy].forEach(f=>{
+    if(f.isJumping){ f.vy +=1; f.y += f.vy; if(f.y>=f.groundY){ f.y=f.groundY; f.isJumping=false; f.vy=0; } }
+  });
+
+  projectiles.forEach(p=>p.x+=p.vx);
+
+  if(Math.random()<0.002) spawnPowerUp();
+  checkPowerUpCollision();
+
+  enemyAI();
+  checkCollisions();
+
+  if(player.health<=0 || enemy.health<=0){ gameOver=true; setTimeout(()=>drawGameOver(),100); return; }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawHealthBars();
+  drawFighter(player);
+
+  // One Shot Gun indicator
+  if(player.oneShotGun){
+    ctx.fillStyle='orange';
+    ctx.fillRect(player.x-20, player.y-90, 40, 15);
+    ctx.fillStyle='black';
+    ctx.font='12px Arial';
+    ctx.textAlign='center';
+    ctx.fillText('Gun', player.x, player.y-78);
+  }
+
+  drawFighter(enemy);
+  drawProjectiles();
+  drawPowerUps();
+
+  requestAnimationFrame(update);
+}
+
+// --- CONTROLS ---
+document.addEventListener('keydown', e=>{
+  switch(e.key.toLowerCase()){
+    case 'a': keys.left=true; break;
+    case 'd': keys.right=true; break;
+    case 'w': if(!player.isJumping){ player.vy=-15; player.isJumping=true; } break;
+    case 's':
+      const now = Date.now();
+      if(now - player.lastKickPress < 300) player.attackQueued='superKick';
+      else player.attackQueued='kick';
+      player.lastKickPress=now;
+      break;
+    case 'z': player.attackQueued='throw'; break;
+    case 'g':
+      if(player.oneShotGun){
+        projectiles.push({ x: player.x + 30, y: player.y - 30, vx: 8, damage: 5, fromPlayer:true });
+        player.oneShotGun=false;
+      }
+      break;
+    case 'b': if(!player.isBlocking){ player.isBlocking=true; setTimeout(()=>player.isBlocking=false,500); } break;
+    case ' ': executePlayerAttack(); break;
+  }
+});
+
+document.addEventListener('keyup', e=>{
+  switch(e.key.toLowerCase()){
+    case 'a': keys.left=false; break;
+    case 'd': keys.right=false; break;
+  }
+});
+
+update();
+</script>
+
+</body>
+</html>

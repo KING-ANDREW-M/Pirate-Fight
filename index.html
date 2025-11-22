@@ -258,13 +258,7 @@
         pirateCannonballs.push(cannonball);
     }
 
-    // Function to display health bar
-    function drawHealthBar() {
-        ctx.fillStyle = 'black';
-        ctx.fillRect(10, 10, 200, 20);
-        ctx.fillStyle = 'green';
-        ctx.fillRect(10, 10, 200 * (ship.health / 100), 20);
-    }
+
     // Function to display pirate hitcount
     function drawPirateHitCount() {
         ctx.fillStyle = 'black';
@@ -310,8 +304,7 @@
         ctx.fillStyle = ship.color;
         ctx.fillRect(ship.x, ship.y, ship.width, ship.height);
 
-        // Draw health bar and lives
-        drawHealthBar();
+
         drawLives();
         drawPirateHitCount();
         drawLevel();
